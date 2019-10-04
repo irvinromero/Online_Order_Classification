@@ -1,0 +1,394 @@
+---
+title: "R Notebook"
+output:
+  html_document: default
+  html_notebook: default
+---
+
+### Set environment and load in data
+
+```{r}
+# Please add your main working directory
+main_wd = ''
+setwd(main_wd)
+rm(list = ls())
+library(ggplot2)
+library(scales)
+library(lubridate)
+library(dplyr)
+library(rpart)
+library(class)
+library(ROCR)
+library(rpart.plot)
+library(reshape2)
+library(nnet)
+
+df_order =read.csv("data/order.csv", header = TRUE, sep = ",")
+df_online = read.csv("data/online.csv", header = TRUE, sep = ",")
+
+
+```
+
+#### *Analyze shape of Order and Online Dataframe, then print first couple rows*
+###**1) Order DataFrame:**  
+
+```{r}
+#Rows x Columns
+dim(df_order)
+```  
+`#Print Order Dataframe`
+```{r echo=FALSE}
+head(df_order)
+```  
+###**2) Online DataFrame:**  
+```{r }
+#Rows x Columns
+dim(df_online)
+```
+`#Print Order Dataframe`
+```{r echo=FALSE}
+head(df_online)
+```  
+  
+
+# **Exploratory Analysis**
+## ***Order DataFrame***
+
+From the Order dataframe we can see there are 6 variables.  
+```{r echo=FALSE}
+summary(df_order)
+
+#df_order$custno <- as.factor(df_order$custno)
+#df_order$ordno <- as.factor(df_order$ordno)
+#df_order$prodcat2 <- as.factor(df_order$prodcat2)
+#df_order$prodcat1 <- as.factor(df_order$prodcat1)
+
+```
+
+###--Column: Custno
+**Customer_no56** is observed to have the highest count at **626**  
+**Customer_no1** is observed to have the lowest count at **1**  
+`Frequency Table`
+```{r echo=FALSE}
+head(summary(as.factor(df_order$custno)))
+custnoCount <- table(df_order$custno)
+head(custnoCount[order(custnoCount, decreasing = FALSE)])
+rm(custnoCount)
+```
+```{r}
+# Count of Unique Customers
+length(unique(as.factor(df_order$custno)))
+```
+
+
+
+
+###--Column: Ordno
+
+```{r}
+# Total Unique Order Numbers
+length(unique(df_order$ordno))
+```
+
+**order_no6076** has the highest count of obsrvations at **26** counts  
+**order_no1** has lowest count of observations at **1**  
+`Frequency Table`
+```{r echo= FALSE}
+head(summary(as.factor(df_order$ordno)))
+orderCount <- table(df_order$ordno)
+head(orderCount[order(orderCount, decreasing = FALSE)])
+```
+
+
+
+
+###--Column: Orderdate
+First date time observed **2016-01-01 05:05:14**  
+Last date time observed **2019-01-02 23:54:58 PST**
+```{r echo=FALSE}
+### change Orderdate from int to posixct format
+df_order$orderdate <- as.POSIXct(df_order$orderdate)
+summary(df_order)
+```
+
+
+
+
+
+
+###--Column: prodcat2
+
+```{r }
+# Total Category NA's
+tail(summary(df_order$prodcat2))
+```
+
+```{r }
+# Total Unique Values
+length(unique(df_order$prodcat2))
+```
+**value_3** has the highest count of observations at **40,908**  
+**value_194** has lowest count of observations at **1**  
+```{r echo=FALSE}
+head(summary(as.factor(df_order$prodcat2)))
+proCat2Count <- table(df_order$prodcat2)
+head(proCat2Count[order(proCat2Count, decreasing = FALSE)])
+```
+
+
+
+###--Column: prodcat1
+Product Category includes the following 6 categories **1, 2, 3, 4, 5, 7**  
+**Category 2** has highest count of orders at **88684**  
+**Category 5** has lowest count of orders at **11180**  
+```{r echo=FALSE}
+summary(df_order$prodcat1)
+length(unique(df_order$prodcat1))
+ggplot(df_order, aes(prodcat1, fill = as.factor(prodcat1))) + geom_bar()
+
+```
+
+
+
+
+###--Column: revenue
+Max revenue made from orders is **$150** and Min is **$0**  
+**Average** made from order is **$74.94**  
+**1st and 3rd Quartile range** are between **$37.43 and $112.28** 
+```{r echo=FALSE}
+summary(df_order$revenue)
+```
+ 
+
+
+
+
+##***Online DataFrame***
+From the Online Dataframe we can observe 7 variables
+```{r echo=FALSE}
+summary(df_online)
+
+#df_online$session <- as.factor(df_online$session)
+#df_online$visitor <- as.factor(df_online$visitor)
+#df_online$custno <- as.factor(df_online$custno)
+#df_online$category <- as.factor(df_online$category)
+#df_online$event1 <- as.factor(df_online$event1)
+#df_online$event2 <- as.factor(df_online$event2)
+```
+
+
+###--Column: session
+Highest count of sessions observed is **5** from **session_id72733**  
+`Frequency Table`
+```{r echo=FALSE}
+head(summary(as.factor(df_online$session)))
+```
+Lowest count of sessions observed is **1**  
+`Frequency Table`
+```{r echo=FALSE}
+seshCount <- table(df_online$session)
+head(seshCount[order(seshCount, decreasing = FALSE)])
+```
+
+```{r}
+# Total unique number of sessions
+length(unique(df_online$session))
+```
+
+
+
+###--Column: visitor
+
+```{r}
+# Total unique number of visitors
+length(unique(df_online$visitor))
+```
+***Lowest count*** of visitors are **1** with ***Max count*** at **440** visits from **visitor_ID328620**  
+`Frequency Table`
+```{r echo=FALSE}
+head(summary(as.factor(df_online$visitor)))
+
+vizCount <- table(df_online$visitor)
+head(vizCount[order(vizCount, decreasing = FALSE)])
+
+```
+  
+
+
+
+
+###--Column: dt
+First date time observed **2016-01-01 00:00:08**  
+Last date time observed **2017-12-31 23:58:05**
+```{r echo=FALSE}
+###change dt from int to posixct format
+df_online$dt <- as.POSIXct(df_online$dt)
+summary(df_online$dt)
+```
+
+
+
+###--Column: custno
+ 
+```{r}
+# Total unique number of customer number
+length(unique(df_online$custno))
+```
+**cust_no713** is observed to have the highest counts at **855** 
+**cust_no15** is observed to have lowest count at **1**  
+`Frequency Table`
+```{r echo=FALSE}
+head(summary(df_online$custno))
+custCount <- table(df_online$custno)
+head(custCount[order(custCount, decreasing = FALSE)])
+```
+
+
+
+###--Column: category
+**Category 3** has highest browsing count at **706920**  
+Followed by **category 2** with **194890** counts  
+**category 1** has least count of browsings with **52964**
+
+```{r echo=FALSE}
+table(df_online$category)
+ggplot(df_online, aes(category, fill = as.factor(category))) + geom_bar()+
+  scale_y_continuous( labels = comma)
+```
+
+
+
+
+###--Column: event1
+**9** unique event_types for event1  
+We observe **789846** *NA's* for Online Event 1  
+For event1 **value 1** has the highest count of observations at **51567** counts  
+For event1 **value 10** has the Lowest count of observations at **1223** counts  
+```{r echo=FALSE}
+summary(df_online$event1)
+ggplot(df_online[!is.na(df_online$event1),], aes(event1, fill = as.factor(event1))) + geom_bar()+
+  scale_y_continuous( labels = comma)
+```
+ 
+
+
+
+###--Column: event2
+```{r}
+# Total unique event2 types
+length(unique(df_online$event2))
+```
+
+For event2 **value 7** has the highest counts at **367857** counts  
+For event2 **value 10** has the lowest count at **8235** counts  
+
+```{r echo=FALSE}
+summary(df_online$event2)
+table(df_online$event2)
+
+ggplot(df_online, aes(event2, fill = as.factor(event2))) + geom_bar()+
+  scale_y_continuous( labels = comma)
+```
+ 
+
+
+
+
+# **Feature Engineering and Feature Selection**
+
+
+
+### Starting with fresh data set (after data exploration and design notes)
+```{r}
+rm(list = ls())
+df_order =read.csv("data/order.csv", header = TRUE, sep = ",")
+df_order <- df_order[df_order$prodcat1 %in% c(1,2,3),]
+df_online = read.csv("data/online.csv", header = TRUE, sep = ",")
+
+
+
+```
+
+### Transforming data for feature selection, processing and merging
+```{r}
+# simplfying order by key
+df_order$count <- 1
+new_order <- aggregate(cbind(count) ~ custno + prodcat1, data = df_order, FUN = sum)
+
+# simplfying online by key
+df_online$count <- 1
+df_online$event2 <- as.character(df_online$event2)
+
+new_online <- aggregate(cbind(count) ~ custno + category + event2, data = df_online, FUN = sum)
+new_online$event2 <- paste0("event_", new_online$event2)
+
+# Feature transformation
+new_online <- dcast(new_online, custno + category ~ event2, FUN = sum)
+new_online[ is.na( new_online ) ] <- 0
+
+
+names(new_order) <- c("custno", "category", "purchase_count")
+
+# Merging data (only including order data)
+main_df <- merge(new_order, new_online, by = c("custno", "category"), all.x = TRUE)
+
+# QA
+dim(main_df)
+dim(new_order)
+head(main_df)
+```
+
+### cleaning up column names and removing NA from data
+
+```{r }
+
+main_df <-main_df[, c("custno", "category", "purchase_count", paste0("event_", as.character(seq(10))))]
+main_df[is.na(main_df)] <- 0
+
+
+```
+
+
+
+
+# **Model Design & Sampling**
+
+###Create Test and Train Datasets 
+
+```{r}
+# setting up sample test and training
+sample_d <- sample(seq(nrow(main_df)),  size= nrow(main_df)*.8, replace = FALSE)
+
+train_df <- main_df[sample_d, c("category", paste0("event_", as.character(seq(10))))]
+test_df <- main_df[-sample_d, c("category", paste0("event_", as.character(seq(10))))]
+```
+
+```{r }
+# Test and prediction result
+multi_log_reg <- multinom(category ~ ., data = train_df)
+prediction_values <-predict(multi_log_reg, test_df[, c(paste0("event_", as.character(seq(10))))]) %>%
+   as.character() %>% as.numeric()
+summary(multi_log_reg)
+```
+# **Model Evaluation**
+
+
+```{r}
+
+#Counts Classified Incorrectly vs Correctly
+performance <- table(prediction_values == test_df$category)
+performance
+#Accuracy Percentage
+performance[2]/nrow(test_df) * 100
+```
+
+# **Summary of results**
+
+From the Order Dataframe I normalized order in order to quanitfy the orders by customer and   category. From the Online Dataframe I normalized the event2 variable to featurize the variable Using these two new datasets I have transformed I then merge both datasets on 'custno' and 'category'. During my transformations and model building, I dropped the rows were product category was not 1, 2, or 3, from our order dataset. This was due there being no online.data for these product categories. This is how I reached my master dataset I would use to build my test and train samples.  
+  
+In order to predict the category a customer is to make a purchase from I created a 
+dataset which contained the quanity of the category purchased, quantified the number of times event2 occured, category user browsed, and customerID number. A multinomial logistic regression is like a logistic regression but for classification tasks of two or more, which is ideal for my challenge.  
+
+
+
+
